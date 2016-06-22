@@ -1,7 +1,13 @@
 package shubhamjha33.popularmovies;
 
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.database.Cursor;
+
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import shubhamjha33.popularmovies.data.MovieContract;
 
 /**
  * Created by Shubham on 12-04-2016.
@@ -52,15 +58,35 @@ public class MovieDetails {
         JSONObject jsonObject=new JSONObject();
         try {
             jsonObject.put("id",id);
-            jsonObject.put("originalTitle",originalTitle);
-            jsonObject.put("posterImageUrl",posterImageUrl);
+            jsonObject.put("original_title",originalTitle);
+            jsonObject.put("poster_path",posterImageUrl);
             jsonObject.put("overview",overview);
-            jsonObject.put("releaseDate",releaseDate);
-            jsonObject.put("userRating",userRating);
+            jsonObject.put("release_date",releaseDate);
+            jsonObject.put("vote_average",userRating);
             return jsonObject.toString();
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        return  "";
+        return "";
+    }
+
+    public void convertCursorToData(Cursor cursor){
+        id=cursor.getString(MovieContract.COL_TMDB_ID);
+        originalTitle=cursor.getString(MovieContract.COL_ORIGINAL_TITLE);
+        userRating=cursor.getDouble(MovieContract.COL_RATING);
+        posterImageUrl=cursor.getString(MovieContract.COL_POSTER_URL);
+        overview=cursor.getString(MovieContract.COL_OVERVIEW);
+        releaseDate=cursor.getString(MovieContract.COL_RELEASE_DATE);
+    }
+
+    public ContentValues getContentValues(){
+        ContentValues contentValues=new ContentValues();
+        contentValues.put(MovieContract.FavoriteEntry.COLUMN_TMDB_ID,id);
+        contentValues.put(MovieContract.FavoriteEntry.COLUMN_ORIGINAL_TITLE,originalTitle);
+        contentValues.put(MovieContract.FavoriteEntry.COLUMN_OVERVIEW,overview);
+        contentValues.put(MovieContract.FavoriteEntry.COLUMN_POSTER_URL,posterImageUrl);
+        contentValues.put(MovieContract.FavoriteEntry.COLUMN_RELEASE_DATE,releaseDate);
+        contentValues.put(MovieContract.FavoriteEntry.COLUMN_RATING,userRating);
+        return contentValues;
     }
 }

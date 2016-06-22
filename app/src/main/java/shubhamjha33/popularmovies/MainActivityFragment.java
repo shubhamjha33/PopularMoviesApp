@@ -1,45 +1,43 @@
 package shubhamjha33.popularmovies;
 
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.CursorLoader;
 import android.content.Intent;
+import android.support.v4.content.Loader;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
-import android.os.Bundle;
-import android.util.JsonReader;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.GridView;
-import android.widget.ImageView;
-
-import com.squareup.picasso.Picasso;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
+import shubhamjha33.popularmovies.data.MovieContract;
+import shubhamjha33.popularmovies.data.MovieDbHelper;
+
 /**
  * A placeholder fragment containing a simple view.
  */
-public class MainActivityFragment extends Fragment {
+public class MainActivityFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>{
 
     public static final String LOG_CLASS_NAME="MainActivFrag";
-    ImageAdapter movieAdapter;
+    MovieAdapter movieAdapter;
+    private static int LOADER_ID=101;
 
     @Override
     public void onStart(){
@@ -51,7 +49,7 @@ public class MainActivityFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView=inflater.inflate(R.layout.fragment_main, container, false);
-        movieAdapter=new ImageAdapter(getContext(),new ArrayList<MovieDetails>());
+        movieAdapter=new MovieAdapter(getContext(),new ArrayList<MovieDetails>());
         GridView gridView=(GridView)rootView.findViewById(R.id.gridView);
         gridView.setAdapter(movieAdapter);
         gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -66,8 +64,35 @@ public class MainActivityFragment extends Fragment {
     }
 
     public void fetchMovies(){
-        Log.v(LOG_CLASS_NAME,"Fetch Movies Executed");
-        new FetchAsyncTaskExecuter().execute();
+        Log.v(LOG_CLASS_NAME, "Fetch Movies Executed");
+        SharedPreferences sharedPreferences=PreferenceManager.getDefaultSharedPreferences(getContext());
+        if(sharedPreferences.getString(getString(R.string.pref_sort),getString(R.string.pref_sort_default)).equals(getString(R.string.pref_sort_favorite)))
+            getLoaderManager().initLoader(LOADER_ID,null,this);
+        else
+            new FetchAsyncTaskExecuter().execute();
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        return new CursorLoader(getActivity(), MovieContract.FavoriteEntry.CONTENT_URI,MovieContract.FAVORITE_COLUMNS,null,null,null);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        if(data!=null&&data.moveToFirst()){
+            MovieDetails movieDetails;
+            movieAdapter.clear();
+            do{
+                movieDetails=new MovieDetails();
+                movieDetails.convertCursorToData(data);
+                movieAdapter.add(movieDetails);
+            }while(data.moveToNext());
+        }
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        movieAdapter.clear();
     }
 
     public class FetchAsyncTaskExecuter extends AsyncTask<Void,Void,List<MovieDetails> >{
@@ -96,23 +121,12 @@ public class MainActivityFragment extends Fragment {
         protected List<MovieDetails> doInBackground(Void... params) {
             SharedPreferences sharedPreferences= PreferenceManager.getDefaultSharedPreferences(getContext());
             Uri webUrl=Uri.parse("http://api.themoviedb.org/3/movie/"+sharedPreferences.getString("pref_sort","popular")+"?").buildUpon().appendQueryParameter("api_key", getString(R.string.api_key)).build();
-            try {
+            try{
                 URL url=new URL(webUrl.toString());
                 Log.v(LOG_CLASS_NAME,webUrl.toString());
-                HttpURLConnection urlConnection= (HttpURLConnection) url.openConnection();
-                InputStream is=urlConnection.getInputStream();
-                BufferedReader br=new BufferedReader(new InputStreamReader(is));
-                StringBuilder stringBuilder=new StringBuilder("");
-                String str;
-                while((str=br.readLine())!=null){
-                    stringBuilder.append(str);
-                }
-                return parseJsonStringTMDB(stringBuilder.toString());
+                return parseJsonStringTMDB(Utility.getJSONStringFromUrl(url));
             } catch (MalformedURLException e) {
                 Log.e(LOG_CLASS_NAME,"MalformedURLException occured");
-                e.printStackTrace();
-            } catch (IOException e) {
-                Log.e(LOG_CLASS_NAME,"IOException occured");
                 e.printStackTrace();
             }
             return null;

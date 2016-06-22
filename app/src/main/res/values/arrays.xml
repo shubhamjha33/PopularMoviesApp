@@ -3,9 +3,11 @@
     <string-array name="pref_sort_entries">
         <item>Popular</item>
         <item>Top Rated</item>
+        <item>Favourites</item>
     </string-array>
     <string-array name="pref_sort_entry_values">
-        <item>popular</item>
+        <item>@string/pref_sort_default</item>
         <item>top_rated</item>
+        <item>@string/pref_sort_favorite</item>
     </string-array>
 </resources>

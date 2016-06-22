@@ -1,11 +1,9 @@
 package shubhamjha33.popularmovies;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
-import android.widget.GridView;
 import android.widget.ImageView;
 
 import com.squareup.picasso.Picasso;
@@ -16,17 +14,17 @@ import java.util.List;
 /**
  * Created by Shubham on 11-04-2016.
  */
-public class ImageAdapter extends BaseAdapter {
+public class MovieAdapter extends BaseAdapter {
 
     private Context context;
     private List<MovieDetails> movieList;
 
-    public ImageAdapter(Context c){
+    public MovieAdapter(Context c){
         context=c;
         movieList=new ArrayList<>();
     }
 
-    public ImageAdapter(Context c,List<MovieDetails> imgList){
+    public MovieAdapter(Context c, List<MovieDetails> imgList){
         context=c;
         movieList=imgList;
     }
