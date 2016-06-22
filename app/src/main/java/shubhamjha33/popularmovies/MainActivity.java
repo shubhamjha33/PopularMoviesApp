@@ -10,7 +10,9 @@ import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements MainActivityFragment.Callback{
+
+    private static boolean mTwoPane;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -18,6 +20,15 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        if(findViewById(R.id.detail_fragment)!=null){
+            mTwoPane=true;
+            getSupportFragmentManager().beginTransaction().
+                    replace(R.id.detail_fragment,new DetailsActivityFragment()).
+                    commit();
+        }
+        else{
+            mTwoPane=false;
+        }
     }
 
     @Override
@@ -41,5 +52,25 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onItemSelected(String jsonObject) {
+        if(mTwoPane){
+            DetailsActivityFragment df= new DetailsActivityFragment();
+            Bundle b=new Bundle();
+            b.putString("movieDetails",jsonObject);
+            df.setArguments(b);
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.detail_fragment, df)
+                    .addToBackStack(null)
+                    .commit();
+        }
+        else{
+            Intent intent = new Intent(this, DetailsActivity.class);
+            intent.putExtra(Intent.EXTRA_TEXT,jsonObject);
+            startActivity(intent);
+        }
     }
 }

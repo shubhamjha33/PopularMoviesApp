@@ -40,59 +40,83 @@ import shubhamjha33.popularmovies.data.MovieContract;
  */
 public class DetailsActivityFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>{
 
-    private LinearLayout mReviewLinearLayout,mTrailerLinearLayout;
-    private ImageButton mFavorite;
     private boolean mIsFavorite;
     private MovieDetails movieDetails;
     private int LOADER_ID=101;
+    private ViewHolder mViewHolder;
+
+    private class ViewHolder{
+        private LinearLayout reviewLinearLayout,trailerLinearLayout;
+        private ImageButton favorite;
+        private ImageView posterImage;
+        private Toolbar originalTitle;
+        private TextView overview,releaseDate,userRating;
+        public ViewHolder(View rootView){
+            reviewLinearLayout =(LinearLayout)rootView.findViewById(R.id.reviewsLinearLayout);
+            trailerLinearLayout=(LinearLayout)rootView.findViewById(R.id.trailerLinearLayout);
+            posterImage= (ImageView) rootView.findViewById(R.id.posterImage);
+            originalTitle= (Toolbar) rootView.findViewById(R.id.originalTitle);
+            overview= (TextView) rootView.findViewById(R.id.overview);
+            releaseDate= (TextView) rootView.findViewById(R.id.releaseDate);
+            userRating= (TextView) rootView.findViewById(R.id.userRating);
+            favorite=(ImageButton)rootView.findViewById(R.id.favorite);
+        }
+    }
+
+    private void updateView(String jsonString){
+        JSONObject jsonObject= null;
+        try {
+            jsonObject = new JSONObject(jsonString);
+            movieDetails=new MovieDetails();
+            movieDetails.extractParamsFromJsonObj(jsonObject);
+            mViewHolder.originalTitle.setTitle(movieDetails.getOriginalTitle());
+            mViewHolder.originalTitle.setTitleTextColor(Color.WHITE);
+            mViewHolder.overview.setText(movieDetails.getOverview());
+            Picasso.with(getContext()).load(movieDetails.getPosterImageUrl()).into(mViewHolder.posterImage);
+            mViewHolder.releaseDate.setText(movieDetails.getReleaseDate());
+            mViewHolder.userRating.setText(Double.valueOf(movieDetails.getUserRating()).toString());
+            new FetchReviewsAsyncTask().execute(jsonObject.getString("id"));
+            new FetchTrailerAsyncTask().execute(jsonObject.getString("id"));
+            getLoaderManager().initLoader(LOADER_ID, null, this);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView=inflater.inflate(R.layout.fragment_details, container, false);
-        String jsonString=getActivity().getIntent().getStringExtra(Intent.EXTRA_TEXT);
-        try {
-            JSONObject jsonObject=new JSONObject(jsonString);
-            movieDetails=new MovieDetails();
-            movieDetails.extractParamsFromJsonObj(jsonObject);
-            ImageView posterImage= (ImageView) rootView.findViewById(R.id.posterImage);
-            Picasso.with(getContext()).load(movieDetails.getPosterImageUrl()).into(posterImage);
-            Toolbar originalTitle= (Toolbar) rootView.findViewById(R.id.originalTitle);
-            originalTitle.setTitle(movieDetails.getOriginalTitle());
-            originalTitle.setTitleTextColor(Color.WHITE);
-            TextView overview= (TextView) rootView.findViewById(R.id.overview);
-            overview.setText(movieDetails.getOverview());
-            TextView releaseDate= (TextView) rootView.findViewById(R.id.releaseDate);
-            releaseDate.setText(movieDetails.getReleaseDate());
-            TextView userRating= (TextView) rootView.findViewById(R.id.userRating);
-            userRating.setText(Double.valueOf(movieDetails.getUserRating()).toString());
-            mReviewLinearLayout =(LinearLayout)rootView.findViewById(R.id.reviewsLinearLayout);
-            mTrailerLinearLayout=(LinearLayout)rootView.findViewById(R.id.trailerLinearLayout);
-            mFavorite=(ImageButton)rootView.findViewById(R.id.favorite);
-            mIsFavorite=false;
-            mFavorite.setImageResource(android.R.drawable.btn_star_big_off);
-            getLoaderManager().initLoader(LOADER_ID,null,this);
-            mFavorite.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (mIsFavorite) {
-                        int deleteCount=getContext().getContentResolver().delete(MovieContract.FavoriteEntry.CONTENT_URI,MovieContract.FavoriteEntry.COLUMN_TMDB_ID+" = ?",new String[]{movieDetails.getId()});
-                        if(deleteCount>0)
-                            mFavorite.setImageResource(android.R.drawable.btn_star_big_off);
-                    } else {
-                        long _id= ContentUris.parseId(getContext().getContentResolver().insert(MovieContract.FavoriteEntry.CONTENT_URI,movieDetails.getContentValues()));
-                        if(_id>0) {
-                            mFavorite.setImageResource(android.R.drawable.btn_star_big_on);
+        mViewHolder=new ViewHolder(rootView);
+        Intent intent=getActivity().getIntent();
+        Bundle b=getArguments();
+        if(intent!=null&&intent.getStringExtra(Intent.EXTRA_TEXT)!=null) {
+            String jsonString = getActivity().getIntent().getStringExtra(Intent.EXTRA_TEXT);
+            updateView(jsonString);
+        }
+        else if(b!=null&&b.containsKey("movieDetails")){
+            String jsonString=getArguments().getString("movieDetails");
+            updateView(jsonString);
+        }
+        mIsFavorite = false;
+        mViewHolder.favorite.setImageResource(android.R.drawable.btn_star_big_off);
+        mViewHolder.favorite.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mIsFavorite) {
+                    int deleteCount = getContext().getContentResolver().delete(MovieContract.FavoriteEntry.CONTENT_URI, MovieContract.FavoriteEntry.COLUMN_TMDB_ID + " = ?", new String[]{movieDetails.getId()});
+                    if (deleteCount > 0)
+                        mViewHolder.favorite.setImageResource(android.R.drawable.btn_star_big_off);
+                } else {
+                    long _id = ContentUris.parseId(getContext().getContentResolver().insert(MovieContract.FavoriteEntry.CONTENT_URI, movieDetails.getContentValues()));
+                    if (_id > 0) {
+                        mViewHolder.favorite.setImageResource(android.R.drawable.btn_star_big_on);
                         }
                     }
                     mIsFavorite = !mIsFavorite;
                 }
             });
-            new FetchReviewsAsyncTask().execute(jsonObject.getString("id"));
-            new FetchTrailerAsyncTask().execute(jsonObject.getString("id"));
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
         return rootView;
     }
 
@@ -105,7 +129,7 @@ public class DetailsActivityFragment extends Fragment implements LoaderManager.L
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
         if(data!=null&&data.moveToFirst()){
             mIsFavorite=true;
-            mFavorite.setImageResource(android.R.drawable.btn_star_big_on);
+            mViewHolder.favorite.setImageResource(android.R.drawable.btn_star_big_on);
         }
     }
 
@@ -179,7 +203,7 @@ public class DetailsActivityFragment extends Fragment implements LoaderManager.L
                     TextView trailerName=(TextView)ll.findViewById(R.id.trailer_item_name);
                     trailerName.setText(trailer.getTrailerName());
                     ll.setOnClickListener(new TrailerClickListener(trailer));
-                    mTrailerLinearLayout.addView(ll);
+                    mViewHolder.trailerLinearLayout.addView(ll);
                 }
             }
         }
@@ -267,7 +291,7 @@ public class DetailsActivityFragment extends Fragment implements LoaderManager.L
                     author.setText(reviews.getItemAuthor());
                     TextView content=(TextView)ll.findViewById(R.id.review_item_text);
                     content.setText(reviews.getItemText());
-                    mReviewLinearLayout.addView(ll);
+                    mViewHolder.reviewLinearLayout.addView(ll);
                 }
             }
         }

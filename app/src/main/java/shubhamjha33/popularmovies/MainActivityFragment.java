@@ -1,5 +1,6 @@
 package shubhamjha33.popularmovies;
 
+import android.content.Context;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.content.Intent;
@@ -38,6 +39,13 @@ public class MainActivityFragment extends Fragment implements LoaderManager.Load
     public static final String LOG_CLASS_NAME="MainActivFrag";
     MovieAdapter movieAdapter;
     private static int LOADER_ID=101;
+    private static Callback mCallback;
+    private static int mPosition;
+    private static GridView mGridView;
+
+    public interface Callback{
+        public void onItemSelected(String jsonObject);
+    }
 
     @Override
     public void onStart(){
@@ -46,18 +54,43 @@ public class MainActivityFragment extends Fragment implements LoaderManager.Load
     }
 
     @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        mPosition=0;
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt("scrollPosition",mPosition);
+    }
+
+    @Override
+    public void onAttach(Context context) {
+        super.onAttach(context);
+        try{
+            mCallback=(Callback)context;
+        }catch (ClassCastException ex){
+            throw new ClassCastException(context.toString()
+                    + " must implement Callback");
+        }
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView=inflater.inflate(R.layout.fragment_main, container, false);
         movieAdapter=new MovieAdapter(getContext(),new ArrayList<MovieDetails>());
-        GridView gridView=(GridView)rootView.findViewById(R.id.gridView);
-        gridView.setAdapter(movieAdapter);
-        gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        mGridView=(GridView)rootView.findViewById(R.id.gridView);
+        mGridView.setAdapter(movieAdapter);
+        if(savedInstanceState!=null&&savedInstanceState.containsKey("scrollPosition")) {
+            mPosition=savedInstanceState.getInt("scrollPosition",0);
+        }
+        mGridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Intent intent = new Intent(getContext(), DetailsActivity.class);
-                intent.putExtra(Intent.EXTRA_TEXT, movieAdapter.getItem(position).getJSONString());
-                startActivity(intent);
+                mCallback.onItemSelected(movieAdapter.getItem(position).getJSONString());
+                mPosition=position;
             }
         });
         return rootView;
@@ -137,9 +170,10 @@ public class MainActivityFragment extends Fragment implements LoaderManager.Load
             if(movieDetailsList!=null&&movieDetailsList.size()>0){
                 movieAdapter.clear();
                 for(MovieDetails movie:movieDetailsList) {
-                    Log.v(LOG_CLASS_NAME,movie.toString());
                     movieAdapter.add(movie);
                 }
+                mGridView.smoothScrollToPosition(mPosition);
+                mCallback.onItemSelected(movieAdapter.getItem(mPosition).getJSONString());
             }
         }
     }
